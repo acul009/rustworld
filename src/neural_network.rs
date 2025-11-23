@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use arrayvec::ArrayVec;
 
-use crate::{CardinalDirection, Color, Creature, Position, World};
+use crate::{CardinalDirection, Color, Creature, INITIAL_CREATURE_ENERGY, Position, World};
 
 #[derive(Clone)]
 pub enum Rotation {
@@ -35,7 +35,7 @@ impl Action {
             Action::Move(_) => 3,
             Action::Rotate(_) => 2,
             Action::Eat => 2,
-            Action::CreateMembrane(_) => 100,
+            Action::CreateMembrane(_) => INITIAL_CREATURE_ENERGY + 5,
             Action::CopyDna(_) => 10,
         }
     }
@@ -88,8 +88,9 @@ impl NeuralNetwork {
         }
 
         let mut connections = HashSet::new();
-        let min_tries = neuron_count - 1;
-        let connection_generation_tries = fastrand::usize(min_tries..=CONNECTION_COUNT);
+        let min_tries = output_neurons.len();
+        let connection_generation_tries =
+            fastrand::usize(min_tries..=CONNECTION_COUNT.min(output_neurons.len() * 2));
         for _ in 0..connection_generation_tries {
             let source = fastrand::u8(0..input_neurons.len() as u8);
             let destination = fastrand::u8(0..output_neurons.len() as u8);

@@ -7,7 +7,7 @@ pub mod neural_network;
 
 fn main() {
     let settings = WorldSettings {
-        creature_generation_rate: 3,
+        creature_generation_rate: 100,
         food_regen_rate: 12,
     };
 
@@ -208,9 +208,6 @@ impl World {
                         if data.food_1 {
                             data.food_1 = false;
                             creature.energy += 50;
-                            if creature.energy > 150 {
-                                println!("Creature ate food! Now {}", creature.energy);
-                            }
                         }
                     }
                 }
@@ -226,6 +223,10 @@ impl World {
                 Action::CreateMembrane(location) => {
                     let spawn_position = creature.relative_position(position, location);
                     let rotation = creature.rotation.clone();
+                    creature.offspring += 1;
+                    if creature.offspring > 2 {
+                        println!("Creature has too many offspring!");
+                    }
                     self.spawn_creature(spawn_position, rotation, None);
                 }
                 Action::CopyDna(location) => {
@@ -265,12 +266,7 @@ impl World {
             return;
         }
         self.creatures.entry(position).or_insert_with(|| {
-            let creature = Creature {
-                born: self.current_tick,
-                energy: Action::CreateMembrane(Location::InFront).energy_cost(),
-                brain,
-                rotation: rotation,
-            };
+            let creature = Creature::new(self.current_tick, rotation, brain);
             creature
         });
     }
@@ -281,7 +277,6 @@ impl World {
             .get_disjoint_mut([old_position, new_position]);
         if let Some((source, destination)) = source.zip(destination) {
             destination.brain = source.brain.clone();
-            println!("Creature DNA copied");
         }
     }
 
@@ -387,8 +382,22 @@ pub struct Creature {
     energy: u16,
     rotation: CardinalDirection,
     brain: Option<Arc<NeuralNetwork>>,
+    offspring: u64,
 }
+
+const INITIAL_CREATURE_ENERGY: u16 = 100;
+
 impl Creature {
+    fn new(born: u64, rotation: CardinalDirection, brain: Option<Arc<NeuralNetwork>>) -> Self {
+        Creature {
+            born,
+            energy: INITIAL_CREATURE_ENERGY,
+            rotation,
+            brain,
+            offspring: 0,
+        }
+    }
+
     fn relative_position(&self, position: &Position, location: Location) -> Position {
         let cardinal = location.to_cardinal(&self.rotation);
         position.cardinal(cardinal, 1)
