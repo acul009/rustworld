@@ -18,17 +18,17 @@ use iced::{
 };
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::simulation::{Tile, World, WorldSettings};
+use crate::simulation::{Snapshot, SnapshotStats, Tile, World, WorldSettings};
 
 pub enum Message {
-    UpdateImage(u64, Vec<u8>),
+    UpdateUi(Snapshot),
 }
 
 pub struct UI {
     image: image::Handle,
     width: u32,
     height: u32,
-    current_tick: u64,
+    stats: SnapshotStats,
 }
 
 impl UI {
@@ -42,7 +42,7 @@ impl UI {
             image,
             width,
             height,
-            current_tick: 0,
+            stats: SnapshotStats::default(),
         };
 
         let (send, recv) = tokio::sync::mpsc::channel(1);
@@ -62,10 +62,9 @@ impl UI {
                 }
                 last_image = Instant::now();
 
-                let pixels: Vec<u8> = world.to_rgba_image();
+                let snapshot = world.snapshot();
 
-                send.blocking_send(Message::UpdateImage(world.current_tick(), pixels))
-                    .unwrap();
+                send.blocking_send(Message::UpdateUi(snapshot)).unwrap();
             }
         });
 
@@ -74,9 +73,9 @@ impl UI {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::UpdateImage(current_tick, pixels) => {
-                self.current_tick = current_tick;
-                self.image = image::Handle::from_rgba(self.width, self.height, pixels);
+            Message::UpdateUi(snapshot) => {
+                self.stats = snapshot.stats;
+                self.image = image::Handle::from_rgba(self.width, self.height, snapshot.image);
 
                 Task::none()
             }
@@ -90,7 +89,8 @@ impl UI {
             .filter_method(image::FilterMethod::Nearest);
 
         column![
-            text!("Current Tick: {}", self.current_tick),
+            text!("Current Tick: {}", self.stats.current_tick),
+            text!("Creatures_alive: {}", self.stats.creature_count),
             container(viewer).style(|_| container::Style {
                 background: Some(Background::Color(iced::Color::BLACK)),
                 border: border::color(iced::Color::from_rgb8(255, 0, 0)),

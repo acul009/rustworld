@@ -78,6 +78,17 @@ pub struct World {
     settings: WorldSettings,
 }
 
+pub struct Snapshot {
+    pub image: Vec<u8>,
+    pub stats: SnapshotStats,
+}
+
+#[derive(Default)]
+pub struct SnapshotStats {
+    pub current_tick: u64,
+    pub creature_count: usize,
+}
+
 #[derive(Clone)]
 pub struct WorldSettings {
     pub food_regen_rate: u16,
@@ -192,6 +203,11 @@ impl World {
                 .get_mut(position)
                 .expect("An action needs to execute on a position with a creature");
 
+            if self.current_tick - creature.born > MAX_CREATURE_LIFETIME {
+                self.kill_creature(position);
+                return;
+            }
+
             let energy_cost = action.energy_cost();
             if creature.energy >= energy_cost {
                 creature.energy = creature.energy.saturating_sub(action.energy_cost());
@@ -284,7 +300,17 @@ impl World {
         }
     }
 
-    pub fn to_rgba_image(&self) -> Vec<u8> {
+    pub fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            image: self.to_rgba_image(),
+            stats: SnapshotStats {
+                current_tick: self.current_tick,
+                creature_count: self.creatures.len(),
+            },
+        }
+    }
+
+    fn to_rgba_image(&self) -> Vec<u8> {
         self.tiles
             .iter()
             .flat_map(|tile| tile.color().to_u8())
@@ -380,6 +406,7 @@ pub struct Creature {
 }
 
 const INITIAL_CREATURE_ENERGY: u16 = 100;
+const MAX_CREATURE_LIFETIME: u64 = 1000;
 
 impl Creature {
     fn new(born: u64, rotation: CardinalDirection, brain: Option<Arc<NeuralNetwork>>) -> Self {
