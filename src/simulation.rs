@@ -87,6 +87,7 @@ pub struct Snapshot {
 pub struct SnapshotStats {
     pub current_tick: u64,
     pub creature_count: usize,
+    pub max_brain_count: usize,
 }
 
 #[derive(Clone)]
@@ -301,11 +302,25 @@ impl World {
     }
 
     pub fn snapshot(&self) -> Snapshot {
+        let max_brain_count = self
+            .creatures
+            .iter()
+            .map(|(_position, creature)| {
+                if let Some(brain) = &creature.brain {
+                    Arc::strong_count(brain)
+                } else {
+                    0
+                }
+            })
+            .max()
+            .unwrap_or(0);
+
         Snapshot {
             image: self.to_rgba_image(),
             stats: SnapshotStats {
                 current_tick: self.current_tick,
                 creature_count: self.creatures.len(),
+                max_brain_count,
             },
         }
     }

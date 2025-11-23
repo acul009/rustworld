@@ -50,7 +50,7 @@ impl UI {
         std::thread::spawn(move || {
             let settings = WorldSettings {
                 creature_generation_rate: 100,
-                food_regen_rate: 12,
+                food_regen_rate: 40,
             };
 
             let mut world = World::new(1000, 1000, Tile::Lava, settings);
@@ -91,6 +91,7 @@ impl UI {
         column![
             text!("Current Tick: {}", self.stats.current_tick),
             text!("Creatures_alive: {}", self.stats.creature_count),
+            text!("Max brain count: {}", self.stats.max_brain_count),
             container(viewer).style(|_| container::Style {
                 background: Some(Background::Color(iced::Color::BLACK)),
                 border: border::color(iced::Color::from_rgb8(255, 0, 0)),
