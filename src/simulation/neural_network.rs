@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use arrayvec::ArrayVec;
 
-use crate::{CardinalDirection, Color, Creature, INITIAL_CREATURE_ENERGY, Position, World};
+use super::{CardinalDirection, Color, Creature, INITIAL_CREATURE_ENERGY, Position, World};
 
 #[derive(Clone)]
 pub enum Rotation {
@@ -188,7 +188,7 @@ pub enum InputNeuron {
     Eye(Option<Location>, Color),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Location {
     InFront,
     Left,
@@ -197,7 +197,7 @@ pub enum Location {
 }
 
 impl Location {
-    pub fn to_cardinal(&self, look_direction: &CardinalDirection) -> CardinalDirection {
+    pub fn to_cardinal(&self, look_direction: CardinalDirection) -> CardinalDirection {
         match (self, look_direction) {
             (Location::InFront, cardinal) => cardinal.clone(),
             (Location::Left, CardinalDirection::North) => CardinalDirection::West,

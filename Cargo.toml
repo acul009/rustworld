@@ -8,3 +8,6 @@ arrayvec = "0.7.6"
 dashmap = "6.1.0"
 fastrand = "2.3.0"
 rayon = "1.11.0"
+iced = { git = "https://github.com/iced-rs/iced.git", features = [ "image", "advanced", "tokio", "wgpu" ] }
+tokio = { version = "1.48.0", features = ["sync"] }
+tokio-stream = "0.1.17"
