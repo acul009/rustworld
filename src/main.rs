@@ -1,9 +1,4 @@
-use std::{collections::HashMap, ops::Add, sync::Arc};
-
-use crate::{
-    simulation::{Tile, World, WorldSettings},
-    ui::UI,
-};
+use crate::ui::UI;
 
 pub mod simulation;
 pub mod ui;

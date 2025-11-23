@@ -123,7 +123,7 @@ pub enum Neuron {
 
 impl Neuron {
     fn randomize() -> Self {
-        let neuron_type = fastrand::u8(0..=9);
+        let neuron_type = fastrand::u8(0..=10);
         match neuron_type {
             0 => Self::Input(InputNeuron::AlwaysActive),
             1 => Self::Input(InputNeuron::Random),
@@ -144,21 +144,22 @@ impl Neuron {
                 let color = Color::randomize();
                 Self::Input(InputNeuron::Eye(location, color))
             }
-            4 => Self::Output(Action::Idle),
-            5 => Self::Output(Action::Eat),
-            6 => {
+            4 => Self::Input(InputNeuron::EnergySensor(fastrand::u16(0..u16::MAX))),
+            5 => Self::Output(Action::Idle),
+            6 => Self::Output(Action::Eat),
+            7 => {
                 let location = Location::randomize();
                 Self::Output(Action::Move(location))
             }
-            7 => {
+            8 => {
                 let rotation = Rotation::randomize();
                 Self::Output(Action::Rotate(rotation))
             }
-            8 => {
+            9 => {
                 let location = Location::randomize();
                 Self::Output(Action::CreateMembrane(location))
             }
-            9 => {
+            10 => {
                 let location = Location::randomize();
                 Self::Output(Action::CopyDna(location))
             }
@@ -186,6 +187,7 @@ pub enum InputNeuron {
     Random,
     Feeler(Location),
     Eye(Option<Location>, Color),
+    EnergySensor(u16),
 }
 
 #[derive(Clone, Copy)]
@@ -255,6 +257,13 @@ impl NeuralTick {
 
                         if let Some(tile) = world.get_tile(&look_position) {
                             if &tile.color() >= color { 1.0 } else { 0.0 }
+                        } else {
+                            0.0
+                        }
+                    }
+                    InputNeuron::EnergySensor(limit) => {
+                        if me.energy >= *limit {
+                            1.0
                         } else {
                             0.0
                         }

@@ -1,20 +1,12 @@
-use core::task;
-use std::{
-    sync::mpsc::channel,
-    time::{Duration, Instant},
-};
+use std::time::Instant;
 
 use iced::{
-    Background, Border, Element, Length, Subscription, Task,
-    advanced::subscription,
-    border, event,
-    time::{self, every},
+    Background, Element, Length, Subscription, Task, border,
     widget::{
         column, container,
         image::{self, viewer},
         text,
     },
-    window::{events, open_events},
 };
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -49,7 +41,7 @@ impl UI {
 
         std::thread::spawn(move || {
             let settings = WorldSettings {
-                creature_generation_rate: 100,
+                creature_generation_rate: 3,
                 food_regen_rate: 40,
             };
 
