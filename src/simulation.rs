@@ -1,8 +1,11 @@
-use std::{collections::HashMap, ops::Add, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, ops::Add, sync::Arc};
 
+use iced::widget::image;
 use rayon::prelude::*;
 
 use neural_network::{Action, Location, NeuralNetwork, NeuralTick};
+
+use crate::ui::Board;
 
 pub mod neural_network;
 
@@ -69,6 +72,7 @@ impl Add for Position {
     }
 }
 
+#[derive(Clone)]
 pub struct World {
     width: usize,
     height: usize,
@@ -78,19 +82,7 @@ pub struct World {
     settings: WorldSettings,
 }
 
-pub struct Snapshot {
-    pub image: Vec<u8>,
-    pub stats: SnapshotStats,
-}
-
-#[derive(Default)]
-pub struct SnapshotStats {
-    pub current_tick: u64,
-    pub creature_count: usize,
-    pub max_brain_count: usize,
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WorldSettings {
     pub food_regen_rate: u16,
     pub creature_generation_rate: u16,
@@ -293,7 +285,8 @@ impl World {
 
     fn regenerate_food(&mut self) {
         let position = Position::randomize(self.width, self.height);
-        match &mut self.tiles[position.x + position.y * self.width] {
+        let index = position.x + position.y * self.width;
+        match &mut self.tiles[index] {
             Tile::Ground(data) => {
                 data.food_1 = true;
             }
@@ -302,34 +295,13 @@ impl World {
     }
 
     pub fn snapshot(&self) -> Snapshot {
-        let max_brain_count = self
-            .creatures
-            .iter()
-            .map(|(_position, creature)| {
-                if let Some(brain) = &creature.brain {
-                    Arc::strong_count(brain)
-                } else {
-                    0
-                }
-            })
-            .max()
-            .unwrap_or(0);
-
         Snapshot {
-            image: self.to_rgba_image(),
-            stats: SnapshotStats {
-                current_tick: self.current_tick,
-                creature_count: self.creatures.len(),
-                max_brain_count,
-            },
+            current_tick: self.current_tick,
+            width: self.width,
+            height: self.height,
+            tiles: self.tiles.clone(),
+            creatures: self.creatures.clone(),
         }
-    }
-
-    fn to_rgba_image(&self) -> Vec<u8> {
-        self.tiles
-            .iter()
-            .flat_map(|tile| tile.color().to_u8())
-            .collect()
     }
 }
 
@@ -375,7 +347,11 @@ impl AccessableTileData {
 
     fn color(&self) -> Color {
         if self.food_1 {
-            Color { r: 0, g: 255, b: 0 }
+            Color {
+                r: 96,
+                g: 192,
+                b: 0,
+            }
         } else {
             Color { r: 0, g: 0, b: 0 }
         }
@@ -397,7 +373,11 @@ impl Color {
         }
     }
 
-    fn to_u8(&self) -> [u8; 4] {
+    pub fn to_iced(&self) -> iced::Color {
+        iced::Color::from_rgb8(self.r, self.g, self.b)
+    }
+
+    pub fn to_u8(&self) -> [u8; 4] {
         [self.r, self.g, self.b, 255]
     }
 }
@@ -412,6 +392,7 @@ impl PartialOrd for Color {
     }
 }
 
+#[derive(Clone)]
 pub struct Creature {
     born: u64,
     energy: u16,
@@ -421,7 +402,7 @@ pub struct Creature {
 }
 
 const INITIAL_CREATURE_ENERGY: u16 = 100;
-const MAX_CREATURE_LIFETIME: u64 = 1000;
+const MAX_CREATURE_LIFETIME: u64 = 10000;
 
 impl Creature {
     fn new(born: u64, rotation: CardinalDirection, brain: Option<Arc<NeuralNetwork>>) -> Self {
@@ -476,6 +457,60 @@ impl CardinalDirection {
             1 => CardinalDirection::East,
             2 => CardinalDirection::South,
             _ => CardinalDirection::West,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Snapshot {
+    current_tick: u64,
+    width: usize,
+    height: usize,
+    tiles: Vec<Tile>,
+    creatures: HashMap<Position, Creature>,
+}
+
+impl Debug for Snapshot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Snapshot")
+            .field("current_tick", &self.current_tick)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("tiles", &self.tiles.len())
+            .field("creatures", &self.creature_count())
+            .finish()
+    }
+}
+
+impl Snapshot {
+    pub fn current_tick(&self) -> u64 {
+        self.current_tick
+    }
+
+    pub fn creature_count(&self) -> usize {
+        self.creatures.len()
+    }
+
+    pub fn background_upload(
+        &self,
+    ) -> iced::Task<Result<iced::widget::image::Allocation, iced::widget::image::Error>> {
+        let image_data: Vec<u8> = self
+            .tiles
+            .iter()
+            .flat_map(|tile| tile.color().to_u8())
+            .collect();
+
+        let handle = image::Handle::from_rgba(self.width as u32, self.height as u32, image_data);
+        let task = iced::widget::image::allocate(handle);
+        task
+    }
+
+    pub fn board<'a>(&'a self, background: &'a iced::widget::image::Handle) -> Board<'a> {
+        Board {
+            width: self.width as u32,
+            height: self.height as u32,
+            creatures: &self.creatures,
+            background,
         }
     }
 }
